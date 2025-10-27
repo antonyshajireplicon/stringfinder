@@ -67,8 +67,8 @@ jQuery(document).ready(function($){
 
                         // show only if not filtering OR if matched
                         if (!$('#wsf-show-matched').is(':checked') || found) {
-                            const mark = found ? '✅' : '❌';
-                            log(`${mark} ${r.url} [HTTP ${status}]${r.error && r.error.length ? ' Error: '+r.error : ''}`);
+                            const mark = found ? 'Found' : 'Not Found';
+                            log(`${r.url},${mark},${status}${r.error && r.error.length ? ' Error: '+r.error : ''}`);
                         }
                     });
                 }
