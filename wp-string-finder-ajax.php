@@ -3,7 +3,7 @@
 Plugin Name: WP String Finder (AJAX + Multi-cURL)
 Description: Upload CSV of URLs and search each page source for a string. Uses AJAX + multi-cURL for fast parallel scanning with retries and matched-only filter.
 Version: 1.2
-Author: Your Name
+Author: Antony Shaji
 */
 
 if (!defined('ABSPATH')) exit;
@@ -42,7 +42,7 @@ function wsf_admin_page(){
         <input type="text" id="wsf-target" value="/ptt/case-studies/" />
 
         <label>Batch Size (parallel requests):</label>
-        <input type="number" id="wsf-batch-size" value="10" min="1" max="100">
+        <input type="number" id="wsf-batch-size" value="2" min="1" max="100">
 
         <label>Delay between batches (ms):</label>
         <input type="number" id="wsf-delay" value="500" min="0" max="5000">
@@ -131,7 +131,7 @@ function wsf_process_batch(){
     if(!current_user_can('manage_options')) wp_send_json_error('Unauthorized',403);
 
     $job_id = isset($_POST['job_id']) ? sanitize_text_field($_POST['job_id']):'';
-    $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']):10;
+    $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']):2;
 
     if(!$job_id) wp_send_json_error('Missing job_id',400);
     $opt_key = WSF_JOB_OPTION_PREFIX.$job_id;
@@ -226,7 +226,7 @@ function wsf_fetch_multi($urls, $target) {
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_FOLLOWLOCATION => false, // Don't follow redirects
             CURLOPT_TIMEOUT => 20,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_SSL_VERIFYPEER => false,
@@ -278,8 +278,12 @@ function wsf_fetch_multi($urls, $target) {
         }
 
         // If server returned 500 or empty content, schedule for a retry
-        if ($status === 500 || $content === '' || $content === false) {
-            $retry_urls[] = $url;
+        // BUT do NOT retry on redirect status codes (301, 302, 303, 307, 308)
+        if ($status === 500 || ($content === '' || $content === false)) {
+            // Don't retry if it's a redirect status code
+            if (!in_array($status, [301, 302, 303, 307, 308])) {
+                $retry_urls[] = $url;
+            }
         }
 
         // ensure consistent keys and types
